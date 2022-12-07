@@ -11,13 +11,6 @@ square_weights = np.array([ #University of Washington othello board values
     [20, -3, 11, 8, 8, 11, -3, 20]
 ])
 
-
 def heuristic(board):
     multiplied=square_weights*board
     return multiplied.sum()
-
-
-
-def parity_heuristic(board): #exported
-    # parity: number of black - number of white stones
-	return board.sum()

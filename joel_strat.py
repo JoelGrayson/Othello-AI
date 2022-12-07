@@ -19,7 +19,7 @@ NEGATIVE_INFINITY=-99999999999
 PASS_MOVE=(-1, -1)
 SIZE=8
 NUM_SQUARES=SIZE*SIZE
-max_depth=4 #variable
+max_depth=3 #variable
 # >
 
 def get_move(board, turn, time_left_seconds) -> moveT:
@@ -29,6 +29,9 @@ def get_move(board, turn, time_left_seconds) -> moveT:
 
 getMove=get_move #exported as camelCase
 
+def number_of_blank_moves_left(board):
+    return len(np.where(board==0)[0])
+
 def ab_prune(
     alpha_score: scoreT,
     beta_score: scoreT,
@@ -37,41 +40,45 @@ def ab_prune(
     board: boardT,
     depth: int=0,
 ) -> move_scoreT:
-    all_moves=get_all_moves(board, turn)
-
     # base case
     if check_terminal(board): #game over
         black_score, white_score=get_score(board)
         if black_score>white_score: #max wins
-            return {'score': INFINITY, 'best_move': move }
+            return {'score': INFINITY-1, 'best_move': move }
         if white_score>black_score: #min wins
-            return {'score': NEGATIVE_INFINITY, 'best_move': move }
+            return {'score': NEGATIVE_INFINITY+1, 'best_move': move }
         if white_score==black_score: #tie
             return { 'score': 0, 'best_move': move }
     
+    all_moves=get_all_moves(board, turn)
+
     if len(all_moves)==0: #no legal moves
         return {
             "best_move": (-1, -1),
             "score": ab_prune(alpha_score, beta_score, move, -turn, board, depth+1)['score']
         }
 
-    if depth>=max_depth: #exceeded depth
+
+    if depth>max_depth and number_of_blank_moves_left(board)>8: #exceeded depth and still have to recurse more (so use heuristic not continue calculating)
         return {
             "best_move": move,
             "score": heuristic(board)
         }
 
-    # recursive case
-    best_move_score: move_scoreT={
-        "best_move": None,
-        "score": None
-    }
+    # recursive step
+    # best_move_score: move_scoreT={
+    #     "best_move": None,
+    #     "score": None
+    # }
+    # alpha or beta is score
+    best_move=None
 
     for move in all_moves:
         new_board=board.copy()
         stones_to_flip=check_move(new_board, move[0], move[1], turn)
         for stone in stones_to_flip:
             new_board[stone]=turn
+        new_board[move]=turn
         
         new_score: scoreT=ab_prune(
             alpha_score,
@@ -83,25 +90,31 @@ def ab_prune(
         )['score'] #type: ignore
 
         if turn==1: #max
-            if best_move_score['score']==None or new_score>best_move_score['score']: #type: ignore
-                # better score
-                best_move_score['score']=new_score
-                best_move_score['best_move']=move
+            # custom max/min function
+            if new_score>alpha_score: #type: ignore # better score
+                best_move=move
                 alpha_score=new_score
         if turn==-1: #min
-            if best_move_score['score']==None or new_score<best_move_score['score']: #type: ignore
-                # better score
-                best_move_score['score']=new_score
-                best_move_score['best_move']=move
+            if new_score<beta_score: #type: ignore # better score
+                best_move=move
                 beta_score=new_score
 
         if alpha_score>beta_score: #pruning
-            return best_move_score
+            return {
+                "best_move": best_move,
+                "score": alpha_score if turn==1 else beta_score #undesriable
+            }
     
     if turn==1:
-        return best_move_score
+        return {
+            "best_move": best_move,
+            "score": alpha_score
+        }
     if turn==-1:
-        return best_move_score
+        return {
+            "best_move": best_move,
+            "score": beta_score
+        }
     
 
 

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import check_move, check_terminal, get_score
+from utils import check_move, check_terminal, get_score, number_of_empty_squares
 from heuristic import heuristic
 
 # <Typing
@@ -14,23 +14,26 @@ boardT=np.ndarray
 # >
 
 # <Constants
-INFINITY=99999999999 #instead of float(-inf) so it is an int, not a float
-NEGATIVE_INFINITY=-99999999999
+INFINITY=9999999999 #instead of float(-inf) so it is an int, not a float
+NEGATIVE_INFINITY=-9999999999
 PASS_MOVE=(-1, -1)
 SIZE=8
 NUM_SQUARES=SIZE*SIZE
-max_depth=3 #variable
+# max_depth=4 #variable
 # >
 
 def get_move(board, turn, time_left_seconds) -> moveT:
-    # TODO: change depth based on time_left
-    move: moveT=ab_prune(NEGATIVE_INFINITY, INFINITY, PASS_MOVE, turn, board, 0)['best_move'] #type: ignore
+    # higher depth towards the start. Lower depth towards the end.
+    max_depth=4
+
+    if number_of_empty_squares(board)<NUM_SQUARES**2/2: #past halfway point
+        max_depth=3
+    if time_left_seconds<20: #lower depth to not run out of time
+        max_depth=2
+    move: moveT=ab_prune(NEGATIVE_INFINITY, INFINITY, PASS_MOVE, turn, board, max_depth, 0)['best_move'] #type: ignore
     return move
 
 getMove=get_move #exported as camelCase
-
-def number_of_blank_moves_left(board):
-    return len(np.where(board==0)[0])
 
 def ab_prune(
     alpha_score: scoreT,
@@ -38,6 +41,7 @@ def ab_prune(
     move: moveT,
     turn: turnT, #1 = black = max, -1 = white = min
     board: boardT,
+    max_depth: int,
     depth: int=0,
 ) -> move_scoreT:
     # base case
@@ -55,23 +59,19 @@ def ab_prune(
     if len(all_moves)==0: #no legal moves
         return {
             "best_move": (-1, -1),
-            "score": ab_prune(alpha_score, beta_score, move, -turn, board, depth+1)['score']
+            "score": ab_prune(alpha_score, beta_score, move, -turn, board, max_depth, depth+1)['score']
         }
 
 
-    if depth>max_depth and number_of_blank_moves_left(board)>8: #exceeded depth and still have to recurse more (so use heuristic not continue calculating)
+    if depth>max_depth:
+        #  and number_of_empty_squares(board)>8 #exceeded depth and still have to recurse more (so use heuristic not continue calculating)
         return {
             "best_move": move,
             "score": heuristic(board)
         }
 
     # recursive step
-    # best_move_score: move_scoreT={
-    #     "best_move": None,
-    #     "score": None
-    # }
-    # alpha or beta is score
-    best_move=None
+    best_move=None #alpha or beta is score
 
     for move in all_moves:
         new_board=board.copy()
@@ -86,6 +86,7 @@ def ab_prune(
             move,
             -turn,
             new_board,
+            max_depth,
             depth+1
         )['score'] #type: ignore
 

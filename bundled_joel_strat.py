@@ -1,8 +1,12 @@
 import numpy as np
 
 # <Utils
-    # check_move, score, check_terminal
+# check_move, score, check_terminal, number_of_empty_squares
 SIZE=8
+
+def number_of_empty_squares(board):
+    return len(np.where(board==0)[0])
+
 
 #returns if the game is over
 def check_terminal(board, check=[-1,1]) -> bool:
@@ -74,6 +78,7 @@ def check_move(board,row, col, turn):
         # if we reached the end of the loop without finding flanked stones, no stones are added
     # We've searched all directions
     return stonesToFlip
+
 # >
 
 # <Heuristic
@@ -91,35 +96,53 @@ square_weights = np.array([ #University of Washington othello board values
 def heuristic(board):
     multiplied=square_weights*board
     return multiplied.sum()
+
+# >
+
+
+
+# <Typing
+from typing import List, Tuple, Dict, Literal
+scoreT=int
+moveT=Tuple[int, int]
+move_scoreT=Dict[Literal['score'] | Literal['best_move'], scoreT | moveT | None]
+    # { score: scoreT | null, best_move: moveT | null }
+    # need to use type: ignore whenever accessing dict's key ∵ of unknown typeof key
+turnT=Literal[-1] | Literal[1]
+boardT=np.ndarray
 # >
 
 # <Constants
-INFINITY=99999999999 #instead of float(-inf) so it is an int, not a float
-NEGATIVE_INFINITY=-99999999999
+INFINITY=9999999999 #instead of float(-inf) so it is an int, not a float
+NEGATIVE_INFINITY=-9999999999
 PASS_MOVE=(-1, -1)
 SIZE=8
 NUM_SQUARES=SIZE*SIZE
-max_depth=3 #variable
+# max_depth=4 #variable
 # >
 
-def get_move(board, turn, time_left_seconds):
-    # TODO: change depth based on time_left
-    move: moveT=ab_prune(NEGATIVE_INFINITY, INFINITY, PASS_MOVE, turn, board, 0)['best_move'] #type: ignore
+def get_move(board, turn, time_left_seconds) -> moveT:
+    # higher depth towards the start. Lower depth towards the end.
+    max_depth=4
+
+    if number_of_empty_squares(board)<NUM_SQUARES**2/2: #past halfway point
+        max_depth=3
+    if time_left_seconds<20: #lower depth to not run out of time
+        max_depth=2
+    move: moveT=ab_prune(NEGATIVE_INFINITY, INFINITY, PASS_MOVE, turn, board, max_depth, 0)['best_move'] #type: ignore
     return move
 
 getMove=get_move #exported as camelCase
 
-def number_of_blank_moves_left(board):
-    return len(np.where(board==0)[0])
-
 def ab_prune(
-    alpha_score,
-    beta_score,
-    move,
-    turn, #1 = black = max, -1 = white = min
-    board,
-    depth=0,
-):
+    alpha_score: scoreT,
+    beta_score: scoreT,
+    move: moveT,
+    turn: turnT, #1 = black = max, -1 = white = min
+    board: boardT,
+    max_depth: int,
+    depth: int=0,
+) -> move_scoreT:
     # base case
     if check_terminal(board): #game over
         black_score, white_score=get_score(board)
@@ -135,23 +158,19 @@ def ab_prune(
     if len(all_moves)==0: #no legal moves
         return {
             "best_move": (-1, -1),
-            "score": ab_prune(alpha_score, beta_score, move, -turn, board, depth+1)['score']
+            "score": ab_prune(alpha_score, beta_score, move, -turn, board, max_depth, depth+1)['score']
         }
 
 
-    if depth>max_depth and number_of_blank_moves_left(board)>8: #exceeded depth and still have to recurse more (so use heuristic not continue calculating)
+    if depth>max_depth:
+        #  and number_of_empty_squares(board)>8 #exceeded depth and still have to recurse more (so use heuristic not continue calculating)
         return {
             "best_move": move,
             "score": heuristic(board)
         }
 
     # recursive step
-    # best_move_score: move_scoreT={
-    #     "best_move": None,
-    #     "score": None
-    # }
-    # alpha or beta is score
-    best_move=None
+    best_move=None #alpha or beta is score
 
     for move in all_moves:
         new_board=board.copy()
@@ -160,12 +179,13 @@ def ab_prune(
             new_board[stone]=turn
         new_board[move]=turn
         
-        new_score=ab_prune(
+        new_score: scoreT=ab_prune(
             alpha_score,
             beta_score,
             move,
             -turn,
             new_board,
+            max_depth,
             depth+1
         )['score'] #type: ignore
 
@@ -199,9 +219,10 @@ def ab_prune(
 
 
 def get_all_moves(board, turn):
-    moves=[]
+    moves: List[moveT]=[]
     for row in range(SIZE):
         for col in range(SIZE):
             if check_move(board, row, col, turn):
                 moves.append((row, col))
     return moves
+

@@ -3,6 +3,7 @@ import human_strat
 import random_strat
 import joel_strat
 
+
 # Play Random
 playerNames = ['joel_strat', 'random_strat']
 player_modules = [joel_strat, random_strat]
@@ -14,6 +15,15 @@ player_modules = [joel_strat, random_strat]
 # Play Itself
 playerNames = ['joel_strat', 'joel_strat']
 player_modules = [joel_strat, joel_strat]
+
+
+
+
+# # JoelClark
+# import private.joelClark as joelClark
+# playerNames = ['joelClark', 'joelClark']
+# player_modules = [joelClark, joelClark]
+
 
 # >
 
@@ -53,7 +63,7 @@ class Othello:
 		self.black = blackModule.getMove
 		self.white = whiteModule.getMove
 
-		self.max_time = 1800  # maximum time (seconds) allocated
+		self.max_time = 180  # maximum time (seconds) allocated
 		# to each AI for the whole game
 		self.cur_times = [0, 0]  # elapsed time for white, black
 

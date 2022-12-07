@@ -1,5 +1,11 @@
-# check_move, score, check_terminal
+import numpy as np
+
+# check_move, score, check_terminal, number_of_empty_squares
 SIZE=8
+
+def number_of_empty_squares(board):
+    return len(np.where(board==0)[0])
+
 
 #returns if the game is over
 def check_terminal(board, check=[-1,1]) -> bool:
